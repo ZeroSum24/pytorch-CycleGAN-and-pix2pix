@@ -444,8 +444,8 @@ class RelationalResnetGenerator(nn.Module):
                       norm_layer(int(ngf * mult / 2)),
                       nn.ReLU(True)]
         model += [nn.ReflectionPad2d(3)]
-        model += [RelationalLayer(ngf, ngf, batch_size=batch_size, gpu_ids=gpu_ids)]
         model += [nn.Conv2d(ngf, output_nc, kernel_size=7, padding=0)]
+        model += [RelationalLayer(ngf, batch_size=batch_size, gpu_ids=gpu_ids)]  # requires number of filters in the output channel
         model += [nn.Tanh()]
 
         self.model = nn.Sequential(*model)
@@ -458,16 +458,18 @@ class RelationalResnetGenerator(nn.Module):
 class RelationalLayer(nn.Module):
     """ This class implements the Relational Layer."""
 
-    def __init__(self, num_kernels, output_nc, batch_size=1, gpu_ids=[]):
+    def __init__(self, num_kernels, batch_size=1, gpu_ids=[]):
         """Initialize the Relational Layer."""
         super(RelationalLayer, self).__init__()
 
-        self.input_nc = num_kernels
-        self.output_nc = output_nc
+        self.input_size = (num_kernels+2)*2
+        self.output_nc = 256
         self.cuda = (not (len(gpu_ids) == 1 and gpu_ids[0] == -1))  # check to ensure cpu is not used
 
         # linear layers
-        self.g_fc1 = nn.Linear(self.input_nc, self.output_nc)
+
+        # (number of filters per object + coordinate of object) * 2
+        self.g_fc1 = nn.Linear(self.input_size, self.output_nc)
 
         self.g_fc2 = nn.Linear(self.output_nc, self.output_nc)
         self.g_fc3 = nn.Linear(self.output_nc, self.output_nc)
@@ -526,7 +528,7 @@ class RelationalLayer(nn.Module):
         x_full = torch.cat([x_i, x_j], 3)  # (64x25x25x2*26+11)
 
         # reshape for passing through network
-        x_ = x_full.view(mb * d * d * d * d, 63)
+        x_ = x_full.view(mb * d * d * d * d, self.input_size)
         x_ = self.g_fc1(x_)
         x_ = F.relu(x_)
         x_ = self.g_fc2(x_)
@@ -551,16 +553,6 @@ class RelationalLayer(nn.Module):
         x_f = self.fc3(x_f)
 
         return F.log_softmax(x_f)
-
-
-class FCOutputModel(nn.Module):
-    def __init__(self):
-        super(FCOutputModel, self).__init__()
-
-
-
-    def forward(self, x):
-
 
 
 class ResnetBlock(nn.Module):
