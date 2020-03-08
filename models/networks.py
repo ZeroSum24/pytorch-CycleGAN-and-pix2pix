@@ -788,7 +788,7 @@ class RelationalNLayerDiscriminator(nn.Module):
         kw = 4
         padw = 1
         sequence = [nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw),
-                    RelationalLayer(ndf, ndf, batch_size=batch_size, gpu_ids=gpu_ids),
+                    RelationalLayer(ndf, batch_size=batch_size, gpu_ids=gpu_ids),
                     nn.LeakyReLU(0.2, True)]
         nf_mult = 1
         nf_mult_prev = 1
@@ -797,7 +797,7 @@ class RelationalNLayerDiscriminator(nn.Module):
             nf_mult = min(2 ** n, 8)
             sequence += [
                 nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=2, padding=padw, bias=use_bias),
-                RelationalLayer(ndf * nf_mult, ndf * nf_mult, batch_size=batch_size, gpu_ids=gpu_ids),
+                RelationalLayer(ndf * nf_mult, batch_size=batch_size, gpu_ids=gpu_ids),
                 norm_layer(ndf * nf_mult),
                 nn.LeakyReLU(0.2, True)
             ]
@@ -806,7 +806,7 @@ class RelationalNLayerDiscriminator(nn.Module):
         nf_mult = min(2 ** n_layers, 8)
         sequence += [
             nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=1, padding=padw, bias=use_bias),
-            RelationalLayer(ndf * nf_mult, ndf * nf_mult, batch_size=batch_size, gpu_ids=gpu_ids),
+            RelationalLayer(ndf * nf_mult, batch_size=batch_size, gpu_ids=gpu_ids),
             norm_layer(ndf * nf_mult),
             nn.LeakyReLU(0.2, True)
         ]
