@@ -1,8 +1,11 @@
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn import init
+import torch.nn.functional as F
 import functools
 from torch.optim import lr_scheduler
+from torch.autograd import Variable
 
 
 ###############################################################################
@@ -435,6 +438,7 @@ class RelationalResnetGenerator(nn.Module):
                       norm_layer(int(ngf * mult / 2)),
                       nn.ReLU(True)]
         model += [nn.ReflectionPad2d(3)]
+        model += [nn.RelationalBlock(ngf)]  # requires the number of kernels in the final output layer
         model += [nn.Conv2d(ngf, output_nc, kernel_size=7, padding=0)]
         model += [nn.Tanh()]
 
@@ -443,6 +447,91 @@ class RelationalResnetGenerator(nn.Module):
     def forward(self, input):
         """Standard forward"""
         return self.model(input)
+
+
+class RelationalLayer(nn.Module):
+
+    def __init__(self, num_kernels, output_nc, cuda=True, batch_size=4):
+
+        self.input_nc = num_kernels
+        self.output_nc = output_nc
+
+        # linear layers
+        self.g_fc1 = nn.Linear(self.input_nc, self.output_nc)
+
+        self.g_fc2 = nn.Linear(self.output_nc, self.output_nc)
+        self.g_fc3 = nn.Linear(self.output_nc, self.output_nc)
+        self.g_fc4 = nn.Linear(self.output_nc, self.output_nc)
+
+        self.f_fc1 = nn.Linear(self.output_nc, self.output_nc)
+
+        self.coord_oi = torch.FloatTensor(batch_size, 2)
+        self.coord_oj = torch.FloatTensor(batch_size, 2)
+        if cuda:
+            self.coord_oi = self.coord_oi.cuda()
+            self.coord_oj = self.coord_oj.cuda()
+        self.coord_oi = Variable(self.coord_oi)
+        self.coord_oj = Variable(self.coord_oj)
+
+        # prepare coord tensor
+        def cvt_coord(i):
+            return [(i / 5 - 2) / 2., (i % 5 - 2) / 2.]
+
+        self.coord_tensor = torch.FloatTensor(batch_size, 25, 2)
+        if cuda:
+            self.coord_tensor = self.coord_tensor.cuda()
+        self.coord_tensor = Variable(self.coord_tensor)
+        np_coord_tensor = np.zeros((batch_size, 25, 2))
+        for i in range(25):
+            np_coord_tensor[:, i, :] = np.array(cvt_coord(i))
+        self.coord_tensor.data.copy_(torch.from_numpy(np_coord_tensor))
+
+    def forward(self, x):
+
+        # average pooling to 5 x 5
+        x = F.adaptive_max_pool2d(x, (5, 5))
+        # https://pytorch.org/docs/stable/_modules/torch/nn/modules/pooling.html#AdaptiveMaxPool2d
+
+        """g"""
+        mb = x.size()[0]
+        n_channels = x.size()[1]
+        d = x.size()[2]
+        # x_flat = (64 x 25 x 24)
+        x_flat = x.view(mb, n_channels, d * d).permute(0, 2, 1)
+
+        # add coordinates
+        x_flat = torch.cat([x_flat, self.coord_tensor], 2)
+
+        # cast all pairs against each other
+        x_i = torch.unsqueeze(x_flat, 1)  # (64x1x25x26+11)
+        x_i = x_i.repeat(1, 25, 1, 1)  # (64x25x25x26+11)
+        x_j = torch.unsqueeze(x_flat, 2)  # (64x25x1x26+11)
+        x_j = x_j.repeat(1, 1, 25, 1)  # (64x25x25x26+11)
+
+        # concatenate all together
+        x_full = torch.cat([x_i, x_j], 3)  # (64x25x25x2*26+11)
+
+        # reshape for passing through network
+        x_ = x_full.view(mb * d * d * d * d, 63)
+        x_ = self.g_fc1(x_)
+        x_ = F.relu(x_)
+        x_ = self.g_fc2(x_)
+        x_ = F.relu(x_)
+        x_ = self.g_fc3(x_)
+        x_ = F.relu(x_)
+        x_ = self.g_fc4(x_)
+        x_ = F.relu(x_)
+
+        # reshape again and sum
+        x_g = x_.view(mb, d * d * d * d, self.output_nc)
+        x_g = x_g.sum(1).squeeze()
+
+        """f"""
+        x_f = self.f_fc1(x_g)
+        x_f = F.relu(x_f)
+
+        return x_f
+
 
 
 class ResnetBlock(nn.Module):
