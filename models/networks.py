@@ -444,7 +444,7 @@ class RelationalResnetGenerator(nn.Module):
                       norm_layer(int(ngf * mult / 2)),
                       nn.ReLU(True)]
         model += [nn.ReflectionPad2d(3)]
-        model += [nn.RelationalBlock(ngf, ngf, batch_size=batch_size, gpu_ids=gpu_ids)]
+        model += [RelationalLayer(ngf, ngf, batch_size=batch_size, gpu_ids=gpu_ids)]
         model += [nn.Conv2d(ngf, output_nc, kernel_size=7, padding=0)]
         model += [nn.Tanh()]
 
@@ -460,10 +460,10 @@ class RelationalLayer(nn.Module):
 
     def __init__(self, num_kernels, output_nc, batch_size=1, gpu_ids=[]):
         """Initialize the Relational Layer."""
-
+        super().__init__()
         self.input_nc = num_kernels
         self.output_nc = output_nc
-        self.cuda = (not (len(gpu_ids) == 1 and gpu_ids[0] != -1))  # check to ensure cpu is not used
+        self.cuda = (not (len(gpu_ids) == 1 and gpu_ids[0] == -1))  # check to ensure cpu is not used
 
         # linear layers
         self.g_fc1 = nn.Linear(self.input_nc, self.output_nc)
@@ -766,7 +766,7 @@ class RelationalNLayerDiscriminator(nn.Module):
             batch_size (int)   -- the input batch size
             gpu_ids (int list) -- which GPUs the network runs on: e.g., 0,1,2
         """
-        super(NLayerDiscriminator, self).__init__()
+        super().__init__()
         if type(norm_layer) == functools.partial:  # no need to use bias as BatchNorm2d has affine parameters
             use_bias = norm_layer.func == nn.InstanceNorm2d
         else:
@@ -775,7 +775,7 @@ class RelationalNLayerDiscriminator(nn.Module):
         kw = 4
         padw = 1
         sequence = [nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw),
-                    nn.RelationalBlock(ndf, ndf, batch_size=batch_size, gpu_ids=gpu_ids),
+                    RelationalLayer(ndf, ndf, batch_size=batch_size, gpu_ids=gpu_ids),
                     nn.LeakyReLU(0.2, True)]
         nf_mult = 1
         nf_mult_prev = 1
@@ -784,7 +784,7 @@ class RelationalNLayerDiscriminator(nn.Module):
             nf_mult = min(2 ** n, 8)
             sequence += [
                 nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=2, padding=padw, bias=use_bias),
-                nn.RelationalBlock(ndf * nf_mult, ndf * nf_mult, batch_size=batch_size, gpu_ids=gpu_ids),
+                RelationalLayer(ndf * nf_mult, ndf * nf_mult, batch_size=batch_size, gpu_ids=gpu_ids),
                 norm_layer(ndf * nf_mult),
                 nn.LeakyReLU(0.2, True)
             ]
@@ -793,7 +793,7 @@ class RelationalNLayerDiscriminator(nn.Module):
         nf_mult = min(2 ** n_layers, 8)
         sequence += [
             nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=1, padding=padw, bias=use_bias),
-            nn.RelationalBlock(ndf * nf_mult, ndf * nf_mult, batch_size=batch_size, gpu_ids=gpu_ids),
+            RelationalLayer(ndf * nf_mult, ndf * nf_mult, batch_size=batch_size, gpu_ids=gpu_ids),
             norm_layer(ndf * nf_mult),
             nn.LeakyReLU(0.2, True)
         ]
