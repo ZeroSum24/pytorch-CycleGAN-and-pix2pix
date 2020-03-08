@@ -445,7 +445,7 @@ class RelationalResnetGenerator(nn.Module):
                       nn.ReLU(True)]
         model += [nn.ReflectionPad2d(3)]
         model += [nn.Conv2d(ngf, output_nc, kernel_size=7, padding=0)]
-        model += [RelationalLayer(ngf, batch_size=batch_size, gpu_ids=gpu_ids)]  # requires number of filters in the output channel
+        model += [RelationalLayer(output_nc, batch_size=batch_size, gpu_ids=gpu_ids)]  # requires number of filters in the output channel
         model += [nn.Tanh()]
 
         self.model = nn.Sequential(*model)
@@ -552,7 +552,7 @@ class RelationalLayer(nn.Module):
         x_f = F.dropout(x_f)
         x_f = self.fc3(x_f)
 
-        return F.log_softmax(x_f)
+        return F.log_softmax(x_f, dim=1)
 
 
 class ResnetBlock(nn.Module):
