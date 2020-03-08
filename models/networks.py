@@ -460,7 +460,8 @@ class RelationalLayer(nn.Module):
 
     def __init__(self, num_kernels, output_nc, batch_size=1, gpu_ids=[]):
         """Initialize the Relational Layer."""
-        super().__init__()
+        super(RelationalLayer, self).__init__()
+
         self.input_nc = num_kernels
         self.output_nc = output_nc
         self.cuda = (not (len(gpu_ids) == 1 and gpu_ids[0] == -1))  # check to ensure cpu is not used
@@ -494,6 +495,9 @@ class RelationalLayer(nn.Module):
         for i in range(25):
             np_coord_tensor[:, i, :] = np.array(cvt_coord(i))
         self.coord_tensor.data.copy_(torch.from_numpy(np_coord_tensor))
+
+        # Define the output model
+        self.fcout = FCOutputModel()
 
     def forward(self, x):
 
@@ -539,7 +543,22 @@ class RelationalLayer(nn.Module):
         x_f = self.f_fc1(x_g)
         x_f = F.relu(x_f)
 
-        return x_f
+        return self.fcout(x_f)
+
+
+class FCOutputModel(nn.Module):
+    def __init__(self):
+        super(FCOutputModel, self).__init__()
+
+        self.fc2 = nn.Linear(256, 256)
+        self.fc3 = nn.Linear(256, 10)
+
+    def forward(self, x):
+        x = self.fc2(x)
+        x = F.relu(x)
+        x = F.dropout(x)
+        x = self.fc3(x)
+        return F.log_softmax(x)
 
 
 class ResnetBlock(nn.Module):
