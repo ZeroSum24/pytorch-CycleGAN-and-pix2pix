@@ -475,6 +475,10 @@ class RelationalLayer(nn.Module):
 
         self.f_fc1 = nn.Linear(self.output_nc, self.output_nc)
 
+        # output model layers
+        self.fc2 = nn.Linear(self.output_nc, self.output_nc)
+        self.fc3 = nn.Linear(self.output_nc, 10)
+
         self.coord_oi = torch.FloatTensor(batch_size, 2)
         self.coord_oj = torch.FloatTensor(batch_size, 2)
         if self.cuda:
@@ -495,9 +499,6 @@ class RelationalLayer(nn.Module):
         for i in range(25):
             np_coord_tensor[:, i, :] = np.array(cvt_coord(i))
         self.coord_tensor.data.copy_(torch.from_numpy(np_coord_tensor))
-
-        # Define the output model
-        self.fcout = FCOutputModel()
 
     def forward(self, x):
 
@@ -543,22 +544,23 @@ class RelationalLayer(nn.Module):
         x_f = self.f_fc1(x_g)
         x_f = F.relu(x_f)
 
-        return self.fcout(x_f)
+        # pass through the FC output model
+        x_f = self.fc2(x_f)
+        x_f = F.relu(x_f)
+        x_f = F.dropout(x_f)
+        x_f = self.fc3(x_f)
+
+        return F.log_softmax(x_f)
 
 
 class FCOutputModel(nn.Module):
     def __init__(self):
         super(FCOutputModel, self).__init__()
 
-        self.fc2 = nn.Linear(256, 256)
-        self.fc3 = nn.Linear(256, 10)
+
 
     def forward(self, x):
-        x = self.fc2(x)
-        x = F.relu(x)
-        x = F.dropout(x)
-        x = self.fc3(x)
-        return F.log_softmax(x)
+
 
 
 class ResnetBlock(nn.Module):
