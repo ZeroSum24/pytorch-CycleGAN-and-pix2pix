@@ -119,7 +119,8 @@ def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=[]):
     return net
 
 
-def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, init_type='normal', init_gain=0.02, gpu_ids=[]):
+def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, init_type='normal', init_gain=0.02,
+             batch_size=1, gpu_ids=[]):
     """Create a generator
 
     Parameters:
@@ -131,6 +132,7 @@ def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, in
         use_dropout (bool) -- if use dropout layers.
         init_type (str)    -- the name of our initialization method.
         init_gain (float)  -- scaling factor for normal, xavier and orthogonal.
+        batch_size (int)   -- the input batch size
         gpu_ids (int list) -- which GPUs the network runs on: e.g., 0,1,2
 
     Returns a generator
@@ -154,9 +156,9 @@ def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, in
     elif netG == 'resnet_6blocks':
         net = ResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=6)
     elif netG == 'relational_resnet_9blocks':
-        net = RelationalResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=9)
+        net = RelationalResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=9, batch_size=batch_size, gpu_ids=gpu_ids)
     elif netG == 'relational_resnet_6blocks':
-        net = RelationalResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=6)
+        net = RelationalResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=6, batch_size=batch_size, gpu_ids=gpu_ids)
     elif netG == 'unet_128':
         net = UnetGenerator(input_nc, output_nc, 7, ngf, norm_layer=norm_layer, use_dropout=use_dropout)
     elif netG == 'unet_256':
@@ -166,7 +168,8 @@ def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, in
     return init_net(net, init_type, init_gain, gpu_ids)
 
 
-def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal', init_gain=0.02, gpu_ids=[]):
+def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal', init_gain=0.02,
+             batch_size=1, gpu_ids=[]):
     """Create a discriminator
 
     Parameters:
@@ -177,6 +180,7 @@ def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal'
         norm (str)         -- the type of normalization layers used in the network.
         init_type (str)    -- the name of the initialization method.
         init_gain (float)  -- scaling factor for normal, xavier and orthogonal.
+        batch_size (int)   -- the input batch size
         gpu_ids (int list) -- which GPUs the network runs on: e.g., 0,1,2
 
     Returns a discriminator
@@ -208,7 +212,7 @@ def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal'
     elif netD == 'n_layers':  # more options
         net = NLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer=norm_layer)
     elif netD == 'relational':  # relational layer and n-layer options
-        net = RelationalNLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer=norm_layer)
+        net = RelationalNLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer=norm_layer, batch_size=batch_size, gpu_ids=gpu_ids)
     elif netD == 'pixel':     # classify if each pixel is real or fake
         net = PixelDiscriminator(input_nc, ndf, norm_layer=norm_layer)
     else:
@@ -393,7 +397,7 @@ class RelationalResnetGenerator(nn.Module):
     """
 
     def __init__(self, input_nc, output_nc, ngf=64, norm_layer=nn.BatchNorm2d, use_dropout=False, n_blocks=6,
-                 padding_type='reflect'):
+                 padding_type='reflect', batch_size=1, gpu_ids=[]):
         """Construct a Resnet-based generator
 
         Parameters:
@@ -404,6 +408,8 @@ class RelationalResnetGenerator(nn.Module):
             use_dropout (bool)  -- if use dropout layers
             n_blocks (int)      -- the number of ResNet blocks
             padding_type (str)  -- the name of padding layer in conv layers: reflect | replicate | zero
+            batch_size (int)   -- the input batch size
+            gpu_ids (int list) -- which GPUs the network runs on: e.g., 0,1,2
         """
         assert(n_blocks >= 0)
         super(RelationalResnetGenerator, self).__init__()
@@ -438,7 +444,7 @@ class RelationalResnetGenerator(nn.Module):
                       norm_layer(int(ngf * mult / 2)),
                       nn.ReLU(True)]
         model += [nn.ReflectionPad2d(3)]
-        model += [nn.RelationalBlock(ngf)]  # requires the number of kernels in the final output layer
+        model += [nn.RelationalBlock(ngf, ngf, batch_size=batch_size, gpu_ids=gpu_ids)]
         model += [nn.Conv2d(ngf, output_nc, kernel_size=7, padding=0)]
         model += [nn.Tanh()]
 
@@ -450,11 +456,14 @@ class RelationalResnetGenerator(nn.Module):
 
 
 class RelationalLayer(nn.Module):
+    """ This class implements the Relational Layer."""
 
-    def __init__(self, num_kernels, output_nc, cuda=True, batch_size=4):
+    def __init__(self, num_kernels, output_nc, batch_size=1, gpu_ids=[]):
+        """Initialize the Relational Layer."""
 
         self.input_nc = num_kernels
         self.output_nc = output_nc
+        self.cuda = (not (len(gpu_ids) == 1 and gpu_ids[0] != -1))  # check to ensure cpu is not used
 
         # linear layers
         self.g_fc1 = nn.Linear(self.input_nc, self.output_nc)
@@ -467,7 +476,7 @@ class RelationalLayer(nn.Module):
 
         self.coord_oi = torch.FloatTensor(batch_size, 2)
         self.coord_oj = torch.FloatTensor(batch_size, 2)
-        if cuda:
+        if self.cuda:
             self.coord_oi = self.coord_oi.cuda()
             self.coord_oj = self.coord_oj.cuda()
         self.coord_oi = Variable(self.coord_oi)
@@ -478,7 +487,7 @@ class RelationalLayer(nn.Module):
             return [(i / 5 - 2) / 2., (i % 5 - 2) / 2.]
 
         self.coord_tensor = torch.FloatTensor(batch_size, 25, 2)
-        if cuda:
+        if self.cuda:
             self.coord_tensor = self.coord_tensor.cuda()
         self.coord_tensor = Variable(self.coord_tensor)
         np_coord_tensor = np.zeros((batch_size, 25, 2))
@@ -746,14 +755,16 @@ class NLayerDiscriminator(nn.Module):
 class RelationalNLayerDiscriminator(nn.Module):
     """Defines a PatchGAN discriminator"""
 
-    def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.BatchNorm2d):
+    def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.BatchNorm2d, batch_size=1, gpu_ids=[]):
         """Construct a PatchGAN discriminator
 
         Parameters:
-            input_nc (int)  -- the number of channels in input images
-            ndf (int)       -- the number of filters in the last conv layer
-            n_layers (int)  -- the number of conv layers in the discriminator
-            norm_layer      -- normalization layer
+            input_nc (int)     -- the number of channels in input images
+            ndf (int)          -- the number of filters in the last conv layer
+            n_layers (int)     -- the number of conv layers in the discriminator
+            norm_layer         -- normalization layer
+            batch_size (int)   -- the input batch size
+            gpu_ids (int list) -- which GPUs the network runs on: e.g., 0,1,2
         """
         super(NLayerDiscriminator, self).__init__()
         if type(norm_layer) == functools.partial:  # no need to use bias as BatchNorm2d has affine parameters
@@ -764,7 +775,7 @@ class RelationalNLayerDiscriminator(nn.Module):
         kw = 4
         padw = 1
         sequence = [nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw),
-                    nn.RelationalBlock(ndf),
+                    nn.RelationalBlock(ndf, ndf, batch_size=batch_size, gpu_ids=gpu_ids),
                     nn.LeakyReLU(0.2, True)]
         nf_mult = 1
         nf_mult_prev = 1
@@ -773,7 +784,7 @@ class RelationalNLayerDiscriminator(nn.Module):
             nf_mult = min(2 ** n, 8)
             sequence += [
                 nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=2, padding=padw, bias=use_bias),
-                nn.RelationalBlock(ndf * nf_mult),
+                nn.RelationalBlock(ndf * nf_mult, ndf * nf_mult, batch_size=batch_size, gpu_ids=gpu_ids),
                 norm_layer(ndf * nf_mult),
                 nn.LeakyReLU(0.2, True)
             ]
@@ -782,7 +793,7 @@ class RelationalNLayerDiscriminator(nn.Module):
         nf_mult = min(2 ** n_layers, 8)
         sequence += [
             nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=1, padding=padw, bias=use_bias),
-            nn.RelationalBlock(ndf * nf_mult),
+            nn.RelationalBlock(ndf * nf_mult, ndf * nf_mult, batch_size=batch_size, gpu_ids=gpu_ids),
             norm_layer(ndf * nf_mult),
             nn.LeakyReLU(0.2, True)
         ]
