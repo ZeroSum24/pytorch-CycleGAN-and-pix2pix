@@ -462,11 +462,11 @@ class RelationalLayer(nn.Module):
         """Initialize the Relational Layer."""
         super(RelationalLayer, self).__init__()
 
-        self.input_size = (num_kernels+2)*2
+        self.input_size = 200
         self.output_nc = 256
         self.cuda = (not (len(gpu_ids) == 1 and gpu_ids[0] == -1))  # check to ensure cpu is not used
 
-        # linear layers
+        # G
 
         # (number of filters per object + coordinate of object) * 2
         self.g_fc1 = nn.Linear(self.input_size, self.output_nc)
@@ -475,9 +475,8 @@ class RelationalLayer(nn.Module):
         self.g_fc3 = nn.Linear(self.output_nc, self.output_nc)
         self.g_fc4 = nn.Linear(self.output_nc, self.output_nc)
 
+        # F
         self.f_fc1 = nn.Linear(self.output_nc, self.output_nc)
-
-        # output model layers
         self.fc2 = nn.Linear(self.output_nc, self.output_nc)
         self.fc3 = nn.Linear(self.output_nc, 10)
 
@@ -512,23 +511,23 @@ class RelationalLayer(nn.Module):
         mb = x.size()[0]
         n_channels = x.size()[1]
         d = x.size()[2]
-        # x_flat = (64 x 25 x 24)
+        # x_flat = (2 x 25 x oc)
         x_flat = x.view(mb, n_channels, d * d).permute(0, 2, 1)
 
         # add coordinates
-        x_flat = torch.cat([x_flat, self.coord_tensor], 2)
+        x_flat = torch.cat([x_flat, self.coord_tensor], 2) # (mb, 25, oc+2)
 
         # cast all pairs against each other
-        x_i = torch.unsqueeze(x_flat, 1)  # (64x1x25x26+11)
-        x_i = x_i.repeat(1, 25, 1, 1)  # (64x25x25x26+11)
-        x_j = torch.unsqueeze(x_flat, 2)  # (64x25x1x26+11)
-        x_j = x_j.repeat(1, 1, 25, 1)  # (64x25x25x26+11)
+        x_i = torch.unsqueeze(x_flat, 1)  # (mbx1x25xoc+2)
+        x_i = x_i.repeat(1, 25, 1, 1)  # (mbx25x25xoc+2)
+        x_j = torch.unsqueeze(x_flat, 2)  # (mbx25x1xoc+2)
+        x_j = x_j.repeat(1, 1, 25, 1)  # (mbx25x25xoc+2)
 
         # concatenate all together
-        x_full = torch.cat([x_i, x_j], 3)  # (64x25x25x2*26+11)
+        x_full = torch.cat([x_i, x_j], 3)  # (mbx25x25x(2*(oc+2)))
 
         # reshape for passing through network
-        x_ = x_full.view(mb * d * d * d * d, self.input_size)
+        x_ = x_full.view(mb * d * d * d * d, 200)
         x_ = self.g_fc1(x_)
         x_ = F.relu(x_)
         x_ = self.g_fc2(x_)
