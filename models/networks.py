@@ -445,7 +445,7 @@ class RelationalResnetGenerator(nn.Module):
                       nn.ReLU(True)]
         model += [nn.ReflectionPad2d(3)]
         model += [nn.Conv2d(ngf, output_nc, kernel_size=7, padding=0)]
-        model += [RelationalLayer(output_nc, batch_size=batch_size, gpu_ids=gpu_ids)]  # requires number of filters in the output channel
+        model += [RelationalLayer(ngf, batch_size=batch_size, gpu_ids=gpu_ids)]  # requires number of filters in the output channel
         model += [nn.Tanh()]
 
         self.model = nn.Sequential(*model)
@@ -462,13 +462,12 @@ class RelationalLayer(nn.Module):
         """Initialize the Relational Layer."""
         super(RelationalLayer, self).__init__()
 
-        self.input_size = 200
+        self.input_size = 100
         self.output_nc = 256
         self.cuda = (not (len(gpu_ids) == 1 and gpu_ids[0] == -1))  # check to ensure cpu is not used
 
         # G
 
-        # (number of filters per object + coordinate of object) * 2
         self.g_fc1 = nn.Linear(self.input_size, self.output_nc)
 
         self.g_fc2 = nn.Linear(self.output_nc, self.output_nc)
@@ -503,6 +502,8 @@ class RelationalLayer(nn.Module):
 
     def forward(self, x):
 
+        print(x.size())
+
         # average pooling to 5 x 5
         x = F.adaptive_max_pool2d(x, (5, 5))
         # https://pytorch.org/docs/stable/_modules/torch/nn/modules/pooling.html#AdaptiveMaxPool2d
@@ -511,6 +512,7 @@ class RelationalLayer(nn.Module):
         mb = x.size()[0]
         n_channels = x.size()[1]
         d = x.size()[2]
+        print(x.size())
         # x_flat = (2 x 25 x oc)
         x_flat = x.view(mb, n_channels, d * d).permute(0, 2, 1)
 
@@ -526,8 +528,11 @@ class RelationalLayer(nn.Module):
         # concatenate all together
         x_full = torch.cat([x_i, x_j], 3)  # (mbx25x25x(2*(oc+2)))
 
-        # reshape for passing through network
-        x_ = x_full.view(mb * d * d * d * d, 200)
+        # reshape for passi48ng through network
+        print('here', x_full.size())
+        x_ = x_full.view(mb * d * d * d * d, 2*(n_channels+2))
+        print(x_.size())
+
         x_ = self.g_fc1(x_)
         x_ = F.relu(x_)
         x_ = self.g_fc2(x_)
@@ -539,17 +544,21 @@ class RelationalLayer(nn.Module):
 
         # reshape again and sum
         x_g = x_.view(mb, d * d * d * d, self.output_nc)
+        print(x_g.size())
         x_g = x_g.sum(1).squeeze()
+        print("x_g", x_g.size())
 
         """f"""
         x_f = self.f_fc1(x_g)
         x_f = F.relu(x_f)
+        print("x_f", x_f.size())
 
         # pass through the FC output model
         x_f = self.fc2(x_f)
         x_f = F.relu(x_f)
         x_f = F.dropout(x_f)
         x_f = self.fc3(x_f)
+        print("x_f", x_f.size())
 
         return F.log_softmax(x_f, dim=1)
 
