@@ -888,7 +888,7 @@ class RelationalNLayerDiscriminator(nn.Module):
         rl_feats = self.relational_net.forward(input)
 
         # Pass through the post-processing FC output model
-        x_w_cnn = torch.cat([cnn_feats, rl_feats], 2)  # concatenate the cnn and relational features
+        x_w_cnn = torch.cat([cnn_feats, rl_feats], 1)        # concatenate the cnn and relational features
 
         # post processing layers
         x_w_cnn = self.out1(x_w_cnn)
