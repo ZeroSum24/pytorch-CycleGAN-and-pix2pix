@@ -212,8 +212,7 @@ def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal'
     elif netD == 'n_layers':  # more options
         net = NLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer=norm_layer)
     elif netD == 'relational':  # relational layer and n-layer options
-        net = RelationalNLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer=norm_layer, batch_size=batch_size,
-                                            gpu_ids=gpu_ids)
+        net = RelationalNLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer=norm_layer, batch_size=batch_size, gpu_ids=gpu_ids)
         # net = RelationalLayer(None, batch_size=batch_size, gpu_ids=gpu_ids)
     elif netD == 'pixel':     # classify if each pixel is real or fake
         net = PixelDiscriminator(input_nc, ndf, norm_layer=norm_layer)
@@ -808,7 +807,7 @@ class NLayerDiscriminator(nn.Module):
 class RelationalNLayerDiscriminator(nn.Module):
     """Defines a PatchGAN discriminator"""
 
-    def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.BatchNorm2d, batch_size=1):
+    def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.BatchNorm2d, batch_size=1, gpu_ids=[]):
         """Construct a PatchGAN discriminator
 
         Parameters:
