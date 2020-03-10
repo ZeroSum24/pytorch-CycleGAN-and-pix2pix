@@ -808,7 +808,7 @@ class NLayerDiscriminator(nn.Module):
 class RelationalNLayerDiscriminator(nn.Module):
     """Defines a PatchGAN discriminator"""
 
-    def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.BatchNorm2d, batch_size=1, gpu_ids=[], device=""):
+    def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.BatchNorm2d, batch_size=1):
         """Construct a PatchGAN discriminator
 
         Parameters:
@@ -851,11 +851,14 @@ class RelationalNLayerDiscriminator(nn.Module):
         self.model = nn.Sequential(*sequence)
 
         # TODO automate image size tensor creation by passing the original_height and original_width of the image
-        x = torch.randn(batch_size, input_nc, 256, 256).to(device)
 
+        x = torch.zeros(batch_size, input_nc, 256, 256)
+        self.model.to(x.device)
         # get the cnn_features and pass to the relational layer for initialisation
+        print(self.device)
         cnn_feats = self.model.forward(x)
-        self.relational_net = RelationalLayer(batch_size=batch_size, gpu_ids=gpu_ids)
+        self.relational_net = RelationalLayer(batch_size=batch_size)
+        self.relational_net.to(x.device)
         rl_feats = self.relational_net.forward(x)
 
         # concatenate the relational layer with the cnn features
