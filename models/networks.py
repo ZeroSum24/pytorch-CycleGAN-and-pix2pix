@@ -522,14 +522,14 @@ class RelationalLayer(nn.Module):
 
         # prepare coord tensor
         def cvt_coord(i):
-            return [(i / 5 - 2) / 2., (i % 5 - 2) / 2.]
+            return [(i / 4 - 2) / 2., (i % 4 - 2) / 2.]
 
-        self.coord_tensor = torch.FloatTensor(batch_size, 25, 2)
+        self.coord_tensor = torch.FloatTensor(batch_size, 16, 2)
         if self.cuda:
             self.coord_tensor = self.coord_tensor.cuda()
         self.coord_tensor = Variable(self.coord_tensor)
-        np_coord_tensor = np.zeros((batch_size, 25, 2))
-        for i in range(25):
+        np_coord_tensor = np.zeros((batch_size, 16, 2))
+        for i in range(16):
             np_coord_tensor[:, i, :] = np.array(cvt_coord(i))
         self.coord_tensor.data.copy_(torch.from_numpy(np_coord_tensor))
 
@@ -538,9 +538,9 @@ class RelationalLayer(nn.Module):
         print(x.size())
 
         # average pooling to 5 x 5
-        x = self.conv(x) ## x = (64 x 24 x 5 x 5)
-
-        # x = F.adaptive_max_pool2d(x, (5, 5))
+        x = self.conv(x)  # x = (2 x 24 x 16 x 16)
+        print(x.size())
+        x = F.adaptive_max_pool2d(x, (4, 4))
         # https://pytorch.org/docs/stable/_modules/torch/nn/modules/pooling.html#AdaptiveMaxPool2d
 
         """g"""
@@ -548,9 +548,9 @@ class RelationalLayer(nn.Module):
         n_channels = x.size()[1]
         d = x.size()[2]
         print(x.size())
-        # x_flat = (2 x 25 x oc)
+        # x_flat = (2 x 24 x 256)
         x_flat = x.view(mb, n_channels, d * d).permute(0, 2, 1)
-
+        # x_flat = (2 x 256 x 24)
         # add coordinates
         x_flat = torch.cat([x_flat, self.coord_tensor], 2) # (mb, 25, oc+2)
 
