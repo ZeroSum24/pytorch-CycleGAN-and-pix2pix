@@ -465,7 +465,7 @@ class RelationalLayer(nn.Module):
 
         self.input_size = 100
         self.output_nc = 256
-        self.cuda = (not (len(gpu_ids) == 1 and gpu_ids[0] == -1))  # check to ensure cpu is not used
+        # self.cuda = (not (len(gpu_ids) == 1 and gpu_ids[0] == -1))  # check to ensure cpu is not used
 
         # G
 
