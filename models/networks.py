@@ -850,7 +850,7 @@ class RelationalNLayerDiscriminator(nn.Module):
         self.model = nn.Sequential(*sequence)
 
         # TODO automate image size tensor creation by passing the original_height and original_width of the image
-        x = torch.randn(batch_size, input_nc, 256, 256)
+        x = torch.randn(batch_size, input_nc, 256, 256).to(self.device)
 
         # get the cnn_features and pass to the relational layer for initialisation
         cnn_feats = self.model.forward(x)
