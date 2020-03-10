@@ -493,7 +493,7 @@ class RelationalLayer(nn.Module):
         """Initialize the Relational Layer."""
         super(RelationalLayer, self).__init__()
 
-        self.input_size = 132
+        self.input_size = 52
         self.output_nc = 256
         # self.cuda = (not (len(gpu_ids) == 1 and gpu_ids[0] == -1))  # check to ensure cpu is not used
 
@@ -552,22 +552,22 @@ class RelationalLayer(nn.Module):
         x_flat = x.view(mb, n_channels, d * d).permute(0, 2, 1)
         # x_flat = (2 x 256 x 24)
         # add coordinates
-        x_flat = torch.cat([x_flat, self.coord_tensor], 2) # (mb, 25, oc+2)
+        x_flat = torch.cat([x_flat, self.coord_tensor], 2)  # (2 * 16 * 26)
         print('A', x_flat.size())
 
         # cast all pairs again48st each other
-        x_i = torch.unsqueeze(x_flat, 1)  # (mbx1x25xoc+2)
+        x_i = torch.unsqueeze(x_flat, 1)  # (2 * 1 * 16 * 26)
         print('B', x_i.size())
-        x_i = x_i.repeat(1, 16, 1, 1)  # (mbx25x25xoc+2)
+        x_i = x_i.repeat(1, 16, 1, 1)  # (2 * 16 * 16 * 26)
         print('C', x_i.size())
 
-        x_j = torch.unsqueeze(x_flat, 2)  # (mbx25x1xoc+2)
+        x_j = torch.unsqueeze(x_flat, 2)  # (2 * 16 * 1 * 26)
         print('D', x_j.size())
-        x_j = x_j.repeat(1, 1, 16, 1)  # (mbx25x25xoc+2)
+        x_j = x_j.repeat(1, 1, 16, 1)  # (2 * 16 * 16 * 26)
         print('E', x_j.size())
 
         # concatenate all together
-        x_full = torch.cat([x_i, x_j], 3)  # (mbx25x25x(2*(oc+2)))
+        x_full = torch.cat([x_i, x_j], 3)  # (2 * 16 * 16 * 52)
 
         # reshape for passing through network
         print('here', x_full.size())
