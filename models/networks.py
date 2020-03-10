@@ -553,12 +553,18 @@ class RelationalLayer(nn.Module):
         # x_flat = (2 x 256 x 24)
         # add coordinates
         x_flat = torch.cat([x_flat, self.coord_tensor], 2) # (mb, 25, oc+2)
+        print('A', x_flat.size())
 
         # cast all pairs again48st each other
         x_i = torch.unsqueeze(x_flat, 1)  # (mbx1x25xoc+2)
+        print('B', x_i.size())
         x_i = x_i.repeat(1, 16, 1, 1)  # (mbx25x25xoc+2)
+        print('C', x_i.size())
+
         x_j = torch.unsqueeze(x_flat, 2)  # (mbx25x1xoc+2)
+        print('D', x_j.size())
         x_j = x_j.repeat(1, 1, 16, 1)  # (mbx25x25xoc+2)
+        print('E', x_j.size())
 
         # concatenate all together
         x_full = torch.cat([x_i, x_j], 3)  # (mbx25x25x(2*(oc+2)))
