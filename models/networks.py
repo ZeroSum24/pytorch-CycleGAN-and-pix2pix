@@ -854,7 +854,7 @@ class RelationalNLayerDiscriminator(nn.Module):
         x = torch.zeros(batch_size, input_nc, 256, 256)
         self.model.to(x.device)
         # get the cnn_features and pass to the relational layer for initialisation
-        print(self.device)
+        # print(self.device)
         cnn_feats = self.model.forward(x)
         self.relational_net = RelationalLayer(batch_size=batch_size)
         self.relational_net.to(x.device)
