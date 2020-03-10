@@ -489,11 +489,12 @@ class ConvInputModel(nn.Module):
 class RelationalLayer(nn.Module):
     """ This class implements the Relational Layer."""
 
-    def __init__(self, num_input_channels, batch_size):
+    def __init__(self, batch_size):
         """Initialize the Relational Layer."""
         super(RelationalLayer, self).__init__()
 
-        self.linear_input_size = 2 * (num_input_channels + 2)
+        # (num_channels (24) +2) * 2
+        self.linear_input_size = 52
         self.num_layer_param = 256
 
         # Run the image through the input model
@@ -861,7 +862,7 @@ class RelationalNLayerDiscriminator(nn.Module):
         cnn_feats = cnn_feats.squeeze()
 
         # extract the relational features from the model
-        self.relational_net = RelationalLayer(num_input_channels=x.size()[1], batch_size=batch_size)
+        self.relational_net = RelationalLayer(batch_size=batch_size)
         self.relational_net.to(x.device)
         rl_feats = self.relational_net.forward(x)
 
