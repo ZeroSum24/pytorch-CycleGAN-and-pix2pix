@@ -477,7 +477,7 @@ class RelationalLayer(nn.Module):
         # F
         self.f_fc1 = nn.Linear(self.output_nc, self.output_nc)
         self.fc2 = nn.Linear(self.output_nc, self.output_nc)
-        self.fc3 = nn.Linear(self.output_nc, 10)
+        self.fc3 = nn.Linear(self.output_nc, 1)
 
         self.coord_oi = torch.FloatTensor(batch_size, 2)
         self.coord_oj = torch.FloatTensor(batch_size, 2)
@@ -560,7 +560,8 @@ class RelationalLayer(nn.Module):
         x_f = self.fc3(x_f)
         print("x_f", x_f.size())
 
-        return F.log_softmax(x_f, dim=1)
+        # return F.log_softmax(x_f, dim=1)
+        return x_f
 
 
 class ResnetBlock(nn.Module):
@@ -766,6 +767,7 @@ class NLayerDiscriminator(nn.Module):
         ]
 
         sequence += [nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw)]  # output 1 channel prediction map
+
         self.model = nn.Sequential(*sequence)
 
     def forward(self, input):
