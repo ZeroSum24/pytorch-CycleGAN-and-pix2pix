@@ -456,6 +456,36 @@ class RelationalResnetGenerator(nn.Module):
         return self.model(input)
 
 
+class ConvInputModel(nn.Module):
+    def __init__(self):
+        super(ConvInputModel, self).__init__()
+
+        self.conv1 = nn.Conv2d(3, 24, 3, stride=2, padding=1)
+        self.batchNorm1 = nn.BatchNorm2d(24)
+        self.conv2 = nn.Conv2d(24, 24, 3, stride=2, padding=1)
+        self.batchNorm2 = nn.BatchNorm2d(24)
+        self.conv3 = nn.Conv2d(24, 24, 3, stride=2, padding=1)
+        self.batchNorm3 = nn.BatchNorm2d(24)
+        self.conv4 = nn.Conv2d(24, 24, 3, stride=2, padding=1)
+        self.batchNorm4 = nn.BatchNorm2d(24)
+
+    def forward(self, img):
+        """convolution"""
+        x = self.conv1(img)
+        x = F.relu(x)
+        x = self.batchNorm1(x)
+        x = self.conv2(x)
+        x = F.relu(x)
+        x = self.batchNorm2(x)
+        x = self.conv3(x)
+        x = F.relu(x)
+        x = self.batchNorm3(x)
+        x = self.conv4(x)
+        x = F.relu(x)
+        x = self.batchNorm4(x)
+        return x
+
+
 class RelationalLayer(nn.Module):
     """ This class implements the Relational Layer."""
 
@@ -466,6 +496,8 @@ class RelationalLayer(nn.Module):
         self.input_size = 132
         self.output_nc = 256
         # self.cuda = (not (len(gpu_ids) == 1 and gpu_ids[0] == -1))  # check to ensure cpu is not used
+
+        self.conv = ConvInputModel()
 
         # G
 
@@ -506,7 +538,9 @@ class RelationalLayer(nn.Module):
         print(x.size())
 
         # average pooling to 5 x 5
-        x = F.adaptive_max_pool2d(x, (5, 5))
+        x = self.conv(x) ## x = (64 x 24 x 5 x 5)
+
+        # x = F.adaptive_max_pool2d(x, (5, 5))
         # https://pytorch.org/docs/stable/_modules/torch/nn/modules/pooling.html#AdaptiveMaxPool2d
 
         """g"""
@@ -529,7 +563,7 @@ class RelationalLayer(nn.Module):
         # concatenate all together
         x_full = torch.cat([x_i, x_j], 3)  # (mbx25x25x(2*(oc+2)))
 
-        # reshape for passi48ng through network
+        # reshape for passing through network
         print('here', x_full.size())
         x_ = x_full.view(mb * d * d * d * d, 2*(n_channels+2))
         print(x_.size())
