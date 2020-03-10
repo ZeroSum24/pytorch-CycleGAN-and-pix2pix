@@ -17,4 +17,4 @@ def test_with_tensor(b, oc, oh, ow):
 if __name__ == "__main__":
 
     # test_with_tensor(b=2, oc=98, oh=20, ow=20)
-    test_with_tensor(b=2, oc=48, oh=20, ow=20)
+    test_with_tensor(b=2, oc=64, oh=20, ow=20)

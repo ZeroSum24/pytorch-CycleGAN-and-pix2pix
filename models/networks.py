@@ -463,7 +463,7 @@ class RelationalLayer(nn.Module):
         """Initialize the Relational Layer."""
         super(RelationalLayer, self).__init__()
 
-        self.input_size = 100
+        self.input_size = 132
         self.output_nc = 256
         # self.cuda = (not (len(gpu_ids) == 1 and gpu_ids[0] == -1))  # check to ensure cpu is not used
 
@@ -520,7 +520,7 @@ class RelationalLayer(nn.Module):
         # add coordinates
         x_flat = torch.cat([x_flat, self.coord_tensor], 2) # (mb, 25, oc+2)
 
-        # cast all pairs against each other
+        # cast all pairs again48st each other
         x_i = torch.unsqueeze(x_flat, 1)  # (mbx1x25xoc+2)
         x_i = x_i.repeat(1, 25, 1, 1)  # (mbx25x25xoc+2)
         x_j = torch.unsqueeze(x_flat, 2)  # (mbx25x1xoc+2)
