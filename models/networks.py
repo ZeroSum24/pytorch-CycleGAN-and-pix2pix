@@ -535,11 +535,11 @@ class RelationalLayer(nn.Module):
 
     def forward(self, x):
 
-        print(x.size())
+        #print(x.size())
 
         # average pooling to 5 x 5
         x = self.conv(x)  # x = (2 x 24 x 16 x 16)
-        print(x.size())
+        #print(x.size())
         x = F.adaptive_max_pool2d(x, (4, 4))
         # https://pytorch.org/docs/stable/_modules/torch/nn/modules/pooling.html#AdaptiveMaxPool2d
 
@@ -547,32 +547,32 @@ class RelationalLayer(nn.Module):
         mb = x.size()[0]
         n_channels = x.size()[1]
         d = x.size()[2]
-        print(x.size())
+        #print(x.size())
         # x_flat = (2 x 24 x 256)
         x_flat = x.view(mb, n_channels, d * d).permute(0, 2, 1)
         # x_flat = (2 x 256 x 24)
         # add coordinates
         x_flat = torch.cat([x_flat, self.coord_tensor], 2)  # (2 * 16 * 26)
-        print('A', x_flat.size())
+        #print('A', x_flat.size())
 
         # cast all pairs again48st each other
         x_i = torch.unsqueeze(x_flat, 1)  # (2 * 1 * 16 * 26)
-        print('B', x_i.size())
+        #print('B', x_i.size())
         x_i = x_i.repeat(1, 16, 1, 1)  # (2 * 16 * 16 * 26)
-        print('C', x_i.size())
+        #print('C', x_i.size())
 
         x_j = torch.unsqueeze(x_flat, 2)  # (2 * 16 * 1 * 26)
-        print('D', x_j.size())
+        #print('D', x_j.size())
         x_j = x_j.repeat(1, 1, 16, 1)  # (2 * 16 * 16 * 26)
-        print('E', x_j.size())
+        #print('E', x_j.size())
 
         # concatenate all together
         x_full = torch.cat([x_i, x_j], 3)  # (2 * 16 * 16 * 52)
 
         # reshape for passing through network
-        print('here', x_full.size())
+        #print('here', x_full.size())
         x_ = x_full.view(mb * d * d * d * d, 2*(n_channels+2))
-        print(x_.size())
+        #print(x_.size())
 
         x_ = self.g_fc1(x_)
         x_ = F.relu(x_)
@@ -585,21 +585,21 @@ class RelationalLayer(nn.Module):
 
         # reshape again and sum
         x_g = x_.view(mb, d * d * d * d, self.output_nc)
-        print(x_g.size())
+        #print(x_g.size())
         x_g = x_g.sum(1).squeeze()
-        print("x_g", x_g.size())
+        #print("x_g", x_g.size())
 
         """f"""
         x_f = self.f_fc1(x_g)
         x_f = F.relu(x_f)
-        print("x_f", x_f.size())
+        #print("x_f", x_f.size())
 
         # pass through the FC output model
         x_f = self.fc2(x_f)
         x_f = F.relu(x_f)
         x_f = F.dropout(x_f)
         x_f = self.fc3(x_f)
-        print("x_f", x_f.size())
+        #print("x_f", x_f.size())
 
         # return F.log_softmax(x_f, dim=1)
         return x_f
