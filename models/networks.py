@@ -556,9 +556,9 @@ class RelationalLayer(nn.Module):
 
         # cast all pairs again48st each other
         x_i = torch.unsqueeze(x_flat, 1)  # (mbx1x25xoc+2)
-        x_i = x_i.repeat(1, 25, 1, 1)  # (mbx25x25xoc+2)
+        x_i = x_i.repeat(1, 16, 1, 1)  # (mbx25x25xoc+2)
         x_j = torch.unsqueeze(x_flat, 2)  # (mbx25x1xoc+2)
-        x_j = x_j.repeat(1, 1, 25, 1)  # (mbx25x25xoc+2)
+        x_j = x_j.repeat(1, 1, 16, 1)  # (mbx25x25xoc+2)
 
         # concatenate all together
         x_full = torch.cat([x_i, x_j], 3)  # (mbx25x25x(2*(oc+2)))
