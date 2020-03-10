@@ -212,8 +212,8 @@ def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal'
     elif netD == 'n_layers':  # more options
         net = NLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer=norm_layer)
     elif netD == 'relational':  # relational layer and n-layer options
-        # net = RelationalNLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer=norm_layer, batch_size=batch_size, gpu_ids=gpu_ids)
-        net = RelationalLayer(None, batch_size=batch_size, gpu_ids=gpu_ids)
+        net = RelationalNLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer=norm_layer, batch_size=batch_size, gpu_ids=gpu_ids)
+        # net = RelationalLayer(None, batch_size=batch_size, gpu_ids=gpu_ids)
     elif netD == 'pixel':     # classify if each pixel is real or fake
         net = PixelDiscriminator(input_nc, ndf, norm_layer=norm_layer)
     else:
@@ -489,28 +489,25 @@ class ConvInputModel(nn.Module):
 class RelationalLayer(nn.Module):
     """ This class implements the Relational Layer."""
 
-    def __init__(self, num_kernels, batch_size=1, gpu_ids=[]):
+    def __init__(self, batch_size=1, gpu_ids=[]):
         """Initialize the Relational Layer."""
         super(RelationalLayer, self).__init__()
 
-        self.input_size = 52
-        self.output_nc = 256
-        # self.cuda = (not (len(gpu_ids) == 1 and gpu_ids[0] == -1))  # check to ensure cpu is not used
+        self.input_size = 52  # input_image.size()[1]
+        self.num_layer_param = 256
+        self.cuda = (not (len(gpu_ids) == 1 and gpu_ids[0] == -1))  # check to ensure cpu is not used
 
         self.conv = ConvInputModel()
 
         # G
+        self.g_fc1 = nn.Linear(self.input_size, self.num_layer_param)
 
-        self.g_fc1 = nn.Linear(self.input_size, self.output_nc)
-
-        self.g_fc2 = nn.Linear(self.output_nc, self.output_nc)
-        self.g_fc3 = nn.Linear(self.output_nc, self.output_nc)
-        self.g_fc4 = nn.Linear(self.output_nc, self.output_nc)
+        self.g_fc2 = nn.Linear(self.num_layer_param, self.num_layer_param)
+        self.g_fc3 = nn.Linear(self.num_layer_param, self.num_layer_param)
+        self.g_fc4 = nn.Linear(self.num_layer_param, self.num_layer_param)
 
         # F
-        self.f_fc1 = nn.Linear(self.output_nc, self.output_nc)
-        self.fc2 = nn.Linear(self.output_nc, self.output_nc)
-        self.fc3 = nn.Linear(self.output_nc, 1)
+        self.f_fc1 = nn.Linear(self.num_layer_param, self.num_layer_param)
 
         self.coord_oi = torch.FloatTensor(batch_size, 2)
         self.coord_oj = torch.FloatTensor(batch_size, 2)
@@ -535,11 +532,11 @@ class RelationalLayer(nn.Module):
 
     def forward(self, x):
 
-        #print(x.size())
+        print(x.size())
 
         # average pooling to 5 x 5
         x = self.conv(x)  # x = (2 x 24 x 16 x 16)
-        #print(x.size())
+        print(x.size())
         x = F.adaptive_max_pool2d(x, (4, 4))
         # https://pytorch.org/docs/stable/_modules/torch/nn/modules/pooling.html#AdaptiveMaxPool2d
 
@@ -547,32 +544,32 @@ class RelationalLayer(nn.Module):
         mb = x.size()[0]
         n_channels = x.size()[1]
         d = x.size()[2]
-        #print(x.size())
+        print(x.size())
         # x_flat = (2 x 24 x 256)
         x_flat = x.view(mb, n_channels, d * d).permute(0, 2, 1)
         # x_flat = (2 x 256 x 24)
         # add coordinates
         x_flat = torch.cat([x_flat, self.coord_tensor], 2)  # (2 * 16 * 26)
-        #print('A', x_flat.size())
+        print('A', x_flat.size())
 
         # cast all pairs again48st each other
         x_i = torch.unsqueeze(x_flat, 1)  # (2 * 1 * 16 * 26)
-        #print('B', x_i.size())
+        print('B', x_i.size())
         x_i = x_i.repeat(1, 16, 1, 1)  # (2 * 16 * 16 * 26)
-        #print('C', x_i.size())
+        print('C', x_i.size())
 
         x_j = torch.unsqueeze(x_flat, 2)  # (2 * 16 * 1 * 26)
-        #print('D', x_j.size())
+        print('D', x_j.size())
         x_j = x_j.repeat(1, 1, 16, 1)  # (2 * 16 * 16 * 26)
-        #print('E', x_j.size())
+        print('E', x_j.size())
 
         # concatenate all together
         x_full = torch.cat([x_i, x_j], 3)  # (2 * 16 * 16 * 52)
 
         # reshape for passing through network
-        #print('here', x_full.size())
+        print('here', x_full.size())
         x_ = x_full.view(mb * d * d * d * d, 2*(n_channels+2))
-        #print(x_.size())
+        print(x_.size())
 
         x_ = self.g_fc1(x_)
         x_ = F.relu(x_)
@@ -584,24 +581,15 @@ class RelationalLayer(nn.Module):
         x_ = F.relu(x_)
 
         # reshape again and sum
-        x_g = x_.view(mb, d * d * d * d, self.output_nc)
-        #print(x_g.size())
+        x_g = x_.view(mb, d * d * d * d, self.num_layer_param)
+        print(x_g.size())
         x_g = x_g.sum(1).squeeze()
-        #print("x_g", x_g.size())
+        print("x_g", x_g.size())
 
         """f"""
         x_f = self.f_fc1(x_g)
         x_f = F.relu(x_f)
-        #print("x_f", x_f.size())
 
-        # pass through the FC output model
-        x_f = self.fc2(x_f)
-        x_f = F.relu(x_f)
-        x_f = F.dropout(x_f)
-        x_f = self.fc3(x_f)
-        #print("x_f", x_f.size())
-
-        # return F.log_softmax(x_f, dim=1)
         return x_f
 
 
@@ -839,7 +827,6 @@ class RelationalNLayerDiscriminator(nn.Module):
         kw = 4
         padw = 1
         sequence = [nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw),
-                    RelationalLayer(ndf, batch_size=batch_size, gpu_ids=gpu_ids),
                     nn.LeakyReLU(0.2, True)]
         nf_mult = 1
         nf_mult_prev = 1
@@ -848,7 +835,6 @@ class RelationalNLayerDiscriminator(nn.Module):
             nf_mult = min(2 ** n, 8)
             sequence += [
                 nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=2, padding=padw, bias=use_bias),
-                RelationalLayer(ndf * nf_mult, batch_size=batch_size, gpu_ids=gpu_ids),
                 norm_layer(ndf * nf_mult),
                 nn.LeakyReLU(0.2, True)
             ]
@@ -857,17 +843,47 @@ class RelationalNLayerDiscriminator(nn.Module):
         nf_mult = min(2 ** n_layers, 8)
         sequence += [
             nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=1, padding=padw, bias=use_bias),
-            RelationalLayer(ndf * nf_mult, batch_size=batch_size, gpu_ids=gpu_ids),
             norm_layer(ndf * nf_mult),
             nn.LeakyReLU(0.2, True)
         ]
 
-        sequence += [nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw)]  # output 1 channel prediction map
         self.model = nn.Sequential(*sequence)
+
+        # TODO automate image size tensor creation by passing the original_height and original_width of the image
+        x = torch.randn(batch_size, input_nc, 256, 256)
+
+        # get the cnn_features and pass to the relational layer for initialisation
+        cnn_feats = self.model.forward(x)
+        self.relational_net = RelationalLayer(batch_size=batch_size, gpu_ids=gpu_ids)
+        rl_feats = self.relational_net.forward(x)
+
+        # concatenate the relational layer with the cnn features
+        print('concat_sizes: ', rl_feats.size(), cnn_feats.size())
+        x_w_cnn = torch.cat([rl_feats, cnn_feats], 1)
+
+        # post processing
+        self.out1 = nn.Linear(x_w_cnn.size()[1], 256)  # NOTE instead of x_w_cnn.size() here maybe use ndf
+        self.out2 = nn.Linear(256, 1)
 
     def forward(self, input):
         """Standard forward."""
-        return self.model(input)
+
+        # pass the image through the discriminator and concat with the image
+        cnn_feat = self.model.forward(input)
+        rl_feat = self.relational_net.forward(input)
+
+        # Pass through the post-processing FC output model
+
+        # concatenate the relational layer with the cnn features
+        x_w_cnn = torch.cat([rl_feat, cnn_feat], 2)
+
+        # post processing
+        x_w_cnn = self.out1(x_w_cnn)
+        x_w_cnn = F.relu(x_w_cnn)
+        x_w_cnn = F.dropout(x_w_cnn)
+        x_w_cnn = self.out2(x_w_cnn)
+
+        return x_w_cnn
 
 
 class PixelDiscriminator(nn.Module):
