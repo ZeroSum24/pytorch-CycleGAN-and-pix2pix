@@ -582,8 +582,8 @@ class RelationalLayer(nn.Module):
 
         # reshape again and sum
         x_g = x_.view(mb, d * d * d * d, self.num_layer_param)
-        #print(x_g.size())
-        x_g = x_g.sum(1).squeeze()
+        print('HEREERERE', x_g.size())
+        x_g = x_g.sum(1).squeeze()  # TODO add in dim in here
         #print("x_g", x_g.size())
 
         """f"""
@@ -858,7 +858,7 @@ class RelationalNLayerDiscriminator(nn.Module):
         cnn_feats = self.model.forward(x)
         print('cnn size: ', cnn_feats.size(), cnn_feats.shape)
 
-        version = "flatten"
+        version = "pool"
         if version == "pool":
             # pool and squeeze the model into the [2, 256] shape
             # print(cnn_feats.shape)
