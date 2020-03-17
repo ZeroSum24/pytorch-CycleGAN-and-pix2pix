@@ -856,13 +856,14 @@ class RelationalNLayerDiscriminator(nn.Module):
 
         # extract the cnn features from the model
         cnn_feats = self.model.forward(x)
-        print('cnn size: ', cnn_feats.size())
+        print('cnn size: ', cnn_feats.size(), cnn_feats.shape)
 
         version = "flatten"
         if version == "pool":
             # pool and squeeze the model into the [2, 256] shape
+            # print(cnn_feats.shape)
             cnn_feats = F.adaptive_avg_pool2d(cnn_feats, cnn_feats.shape[-1])
-            cnn_feats = cnn_feats.squeeze()
+            # cnn_feats = cnn_feats.squeeze()
             print('post-pool cnn size: ', cnn_feats.size())
 
         elif version == "flatten":
