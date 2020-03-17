@@ -862,9 +862,9 @@ class RelationalNLayerDiscriminator(nn.Module):
         if version == "pool":
             # pool and squeeze the model into the [2, 256] shape
             # print(cnn_feats.shape)
-            cnn_feats = F.adaptive_avg_pool2d(cnn_feats, (256, 1, 1))
-            cnn_feats = cnn_feats.squeeze(dim=3)
-            cnn_feats = cnn_feats.squeeze(dim=2)
+            cnn_feats = F.adaptive_avg_pool2d(cnn_feats, (1, 1))  # should change shape to [batch, 512, 1, 1]
+            cnn_feats = cnn_feats.squeeze(dim=3)  # should change shape to [batch, 512, 1]
+            cnn_feats = cnn_feats.squeeze(dim=2)  # should change shape to [batch, 512]
             print('post-pool cnn size: ', cnn_feats.size())
 
         elif version == "flatten":
