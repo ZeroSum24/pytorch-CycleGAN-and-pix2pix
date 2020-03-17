@@ -857,7 +857,7 @@ class RelationalNLayerDiscriminator(nn.Module):
         # extract the cnn features from the model
         cnn_feats = self.model.forward(x)
 
-        version = ""
+        version = "flatten"
         if version == "pool":
             # pool and squeeze the model into the [2, 256] shape
             cnn_feats = F.adaptive_avg_pool2d(cnn_feats, cnn_feats.shape[-1])
@@ -886,9 +886,15 @@ class RelationalNLayerDiscriminator(nn.Module):
         # Pass the image through the discriminators and concat with the image
         cnn_feats = self.model.forward(input)
 
-        # pool and squeeze the model into the [2, 256] shape
-        cnn_feats = F.adaptive_avg_pool3d(cnn_feats, (256, 1, 1))
-        cnn_feats = cnn_feats.squeeze()
+        version = "flatten"
+        if version == "pool":
+            # pool and squeeze the model into the [2, 256] shape
+            cnn_feats = F.adaptive_avg_pool2d(cnn_feats, cnn_feats.shape[-1])
+            cnn_feats = cnn_feats.squeeze()
+
+        elif version == "flatten":
+            # flatten the shape of the cnn features
+            cnn_feats = cnn_feats.view(cnn_feats.shape[0], -1)
 
         # extract the relational features
         rl_feats = self.relational_net.forward(input)
