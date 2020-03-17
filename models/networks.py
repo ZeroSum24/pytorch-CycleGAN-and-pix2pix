@@ -856,6 +856,7 @@ class RelationalNLayerDiscriminator(nn.Module):
 
         # extract the cnn features from the model
         cnn_feats = self.model.forward(x)
+        print('cnn size: ', cnn_feats.size())
 
         version = "flatten"
         if version == "pool":
