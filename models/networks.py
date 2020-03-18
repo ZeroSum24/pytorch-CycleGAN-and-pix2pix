@@ -169,19 +169,20 @@ def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, in
 
 
 def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal', init_gain=0.02,
-             batch_size=1, gpu_ids=[], device=None):
+             batch_size=1, gpu_ids=[], device=None, relational_final_cnn_layer='flatten'):
     """Create a discriminator
 
     Parameters:
-        input_nc (int)     -- the number of channels in input images
-        ndf (int)          -- the number of filters in the first conv layer
-        netD (str)         -- the architecture's name: basic | n_layers | relational | pixel
-        n_layers_D (int)   -- the number of conv layers in the discriminator; effective when netD=='n_layers'
-        norm (str)         -- the type of normalization layers used in the network.
-        init_type (str)    -- the name of the initialization method.
-        init_gain (float)  -- scaling factor for normal, xavier and orthogonal.
-        batch_size (int)   -- the input batch size
-        gpu_ids (int list) -- which GPUs the network runs on: e.g., 0,1,2
+        input_nc (int)                      -- the number of channels in input images
+        ndf (int)                           -- the number of filters in the first conv layer
+        netD (str)                          -- the architecture's name: basic | n_layers | relational | pixel
+        n_layers_D (int)                    -- the number of conv layers in the discriminator; effective when netD=='n_layers'
+        norm (str)                          -- the type of normalization layers used in the network.
+        init_type (str)                     -- the name of the initialization method.
+        init_gain (float)                   -- scaling factor for normal, xavier and orthogonal.
+        batch_size (int)                    -- the input batch size
+        gpu_ids (int list)                  -- which GPUs the network runs on: e.g., 0,1,2
+        relational_final_cnn_layer (str)    -- sets the downscaling type in the relational layer ('average_pool' | 'flatten')
 
     Returns a discriminator
 
@@ -212,7 +213,8 @@ def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal'
     elif netD == 'n_layers':  # more options
         net = NLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer=norm_layer)
     elif netD == 'relational':  # relational layer and n-layer options
-        net = RelationalNLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer=norm_layer, batch_size=batch_size, gpu_ids=gpu_ids, device=device)
+        net = RelationalNLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer=norm_layer, batch_size=batch_size,
+                                            gpu_ids=gpu_ids, device=device, final_cnn_layer=relational_final_cnn_layer)
         # net = RelationalLayer(None, batch_size=batch_size, gpu_ids=gpu_ids)
     elif netD == 'pixel':     # classify if each pixel is real or fake
         net = PixelDiscriminator(input_nc, ndf, norm_layer=norm_layer)
@@ -409,8 +411,8 @@ class RelationalResnetGenerator(nn.Module):
             use_dropout (bool)  -- if use dropout layers
             n_blocks (int)      -- the number of ResNet blocks
             padding_type (str)  -- the name of padding layer in conv layers: reflect | replicate | zero
-            batch_size (int)   -- the input batch size
-            gpu_ids (int list) -- which GPUs the network runs on: e.g., 0,1,2
+            batch_size (int)    -- the input batch size
+            gpu_ids (int list)  -- which GPUs the network runs on: e.g., 0,1,2
         """
         assert(n_blocks >= 0)
         super(RelationalResnetGenerator, self).__init__()

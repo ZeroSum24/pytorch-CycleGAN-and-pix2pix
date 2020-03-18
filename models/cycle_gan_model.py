@@ -78,10 +78,12 @@ class CycleGANModel(BaseModel):
         if self.isTrain:  # define discriminators
             self.netD_A = networks.define_D(opt.output_nc, opt.ndf, opt.netD,
                                             opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, opt.batch_size,
-                                            self.gpu_ids, device=self.device)
+                                            self.gpu_ids, device=self.device,
+                                            relational_final_cnn_layer=opt.relational_final_cnn_layer)
             self.netD_B = networks.define_D(opt.input_nc, opt.ndf, opt.netD,
                                             opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, opt.batch_size,
-                                            self.gpu_ids, device=self.device)
+                                            self.gpu_ids, device=self.device,
+                                            relational_final_cnn_layer=opt.relational_final_cnn_layer)
 
         if self.isTrain:
             if opt.lambda_identity > 0.0:  # only works when input and output images have the same number of channels
