@@ -862,21 +862,21 @@ class RelationalNLayerDiscriminator(nn.Module):
 
         # extract the cnn features from the model
         cnn_feats = self.model.forward(x)
-        print('cnn size: ', cnn_feats.size(), cnn_feats.shape)
+        #print('cnn size: ', cnn_feats.size(), cnn_feats.shape)
 
         if self.final_cnn_layer == "average_pool":
             # pool and squeeze the model into the [2, 256] shape
-            # print(cnn_feats.shape)
+            #print(cnn_feats.shape)
             cnn_feats = F.adaptive_avg_pool2d(cnn_feats, (1, 1))  # should change shape to [batch, 512, 1, 1]
             cnn_feats = cnn_feats.squeeze(dim=3)  # should change shape to [batch, 512, 1]
             cnn_feats = cnn_feats.squeeze(dim=2)  # should change shape to [batch, 512]
-            print('post-pool cnn size: ', cnn_feats.size())
+            #print('post-pool cnn size: ', cnn_feats.size())
 
         elif self.final_cnn_layer == "flatten":
             # flatten the shape of the cnn features
-            print("pre-flat", cnn_feats.shape)
+            #print("pre-flat", cnn_feats.shape)
             cnn_feats = cnn_feats.view(cnn_feats.shape[0], -1)
-            print("post-flat", cnn_feats.shape)
+            #print("post-flat", cnn_feats.shape)
 
         # extract the relational features from the model
         self.relational_net = RelationalLayer(batch_size=batch_size)
