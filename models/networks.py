@@ -512,14 +512,6 @@ class RelationalLayer(nn.Module):
         # F
         self.f_fc1 = nn.Linear(self.num_layer_param, self.num_layer_param)
 
-        self.coord_oi = torch.FloatTensor(batch_size, 2)
-        self.coord_oj = torch.FloatTensor(batch_size, 2)
-        if self.cuda:
-            self.coord_oi = self.coord_oi.cuda()
-            self.coord_oj = self.coord_oj.cuda()
-        self.coord_oi = Variable(self.coord_oi)
-        self.coord_oj = Variable(self.coord_oj)
-
         # prepare coord tensor
         def cvt_coord(i):
             return [(i / 4 - 2) / 2., (i % 4 - 2) / 2.]
@@ -880,7 +872,7 @@ class RelationalNLayerDiscriminator(nn.Module):
             #print("post-flat", cnn_feats.shape)
 
         # extract the relational features from the model
-        self.relational_net = RelationalLayer(batch_size=batch_size)
+        self.relational_net = RelationalLayer(batch_size=(batch_size/len(gpu_ids)))
         self.relational_net.to(x.device)
         rl_feats = self.relational_net.forward(x)
 
