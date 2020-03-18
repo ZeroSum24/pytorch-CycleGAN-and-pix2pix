@@ -497,10 +497,11 @@ class RelationalLayer(nn.Module):
 
         # (num_channels (24) +2) * 2
         self.linear_input_size = 52
+        # TODO this will need to be changed since this input size is no longer correct after the conv net
         self.num_layer_param = 256
 
         # Run the image through the input model
-        self.conv = ConvInputModel()
+        # self.conv = ConvInputModel()
 
         # G
         self.g_fc1 = nn.Linear(self.linear_input_size, self.num_layer_param)
@@ -525,14 +526,15 @@ class RelationalLayer(nn.Module):
             np_coord_tensor[:, i, :] = np.array(cvt_coord(i))
         self.coord_tensor.data.copy_(torch.from_numpy(np_coord_tensor))
 
-    def forward(self, x):
+    def forward(self, cnn_feats):
 
         #print(x.size())
 
         # average pooling to 5 x 5
-        x = self.conv(x)  # x = (2 x 24 x 16 x 16)
+        # x = self.conv(x)  # x = (2 x 24 x 16 x 16)
         #print(x.size())
-        x = F.adaptive_max_pool2d(x, (4, 4))
+        x = cnn_feats
+        x = F.adaptive_max_pool2d(x, (5, 5))
         # https://pytorch.org/docs/stable/_modules/torch/nn/modules/pooling.html#AdaptiveMaxPool2d
 
         """g"""
@@ -875,14 +877,14 @@ class RelationalNLayerDiscriminator(nn.Module):
         # extract the relational features from the model
         self.relational_net = RelationalLayer(batch_size=int(batch_size/len(gpu_ids)))
         self.relational_net.to(x.device)
-        rl_feats = self.relational_net.forward(x)
+        rl_feats = self.relational_net.forward(cnn_feats)
 
         # concatenate the cnn and relational features
         #print('concat_sizes: ', rl_feats.size(), cnn_feats.size())
         x_w_cnn = torch.cat([cnn_feats, rl_feats], 1)
 
         # post processing - final output layer
-        self.out1 = nn.Linear(x_w_cnn.size()[1], 256)  # NOTE instead of x_w_cnn.size() here maybe use ndf
+        self.out1 = nn.Linear(x_w_cnn.size()[1], 256, bias=True)  # NOTE instead of x_w_cnn.size() here maybe use ndf
         self.out2 = nn.Linear(256, 1)
 
     def forward(self, input):
@@ -902,7 +904,7 @@ class RelationalNLayerDiscriminator(nn.Module):
             cnn_feats = cnn_feats.view(cnn_feats.shape[0], -1)
 
         # extract the relational features
-        rl_feats = self.relational_net.forward(input)
+        rl_feats = self.relatiocnn_featsnal_net.forward(cnn_feats)
 
         # Pass through the post-processing FC output model
         x_w_cnn = torch.cat([cnn_feats, rl_feats], 1)        # concatenate the cnn and relational features
