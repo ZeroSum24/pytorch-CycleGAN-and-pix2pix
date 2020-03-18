@@ -869,8 +869,9 @@ class RelationalNLayerDiscriminator(nn.Module):
 
         elif version == "flatten":
             # flatten the shape of the cnn features
+            print("pre-flat", cnn_feats.shape)
             cnn_feats = cnn_feats.view(cnn_feats.shape[0], -1)
-            print('post-flatten cnn size: ', cnn_feats.size())
+            print("post-flat", cnn_feats.shape)
 
         # extract the relational features from the model
         self.relational_net = RelationalLayer(batch_size=batch_size)
