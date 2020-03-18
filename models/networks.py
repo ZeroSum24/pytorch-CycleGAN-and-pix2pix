@@ -552,6 +552,7 @@ class RelationalLayer(nn.Module):
         x_flat = x.view(mb, n_channels, d * d).permute(0, 2, 1)
         # x_flat = (2 x 256 x 24)
         # add coordinates
+        print(x_flat.size(), self.coord_tensor.size())
         x_flat = torch.cat([x_flat, self.coord_tensor], 2)  # (2 * 16 * 26)
         #print('A', x_flat.size())
 
