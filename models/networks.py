@@ -516,7 +516,7 @@ class RelationalLayer(nn.Module):
         def cvt_coord(i):
             return [(i / 4 - 2) / 2., (i % 4 - 2) / 2.]
 
-        self.coord_tensor = torch.FloatTensor(batch_size, 16, 2)
+        self.coord_tensor = torch.FloatTensor(2, 16, 2)  # TODO first arg should be batch size here
         if self.cuda:
             self.coord_tensor = self.coord_tensor.cuda()
         self.coord_tensor = Variable(self.coord_tensor)
