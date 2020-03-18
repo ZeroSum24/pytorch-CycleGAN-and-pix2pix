@@ -583,7 +583,7 @@ class RelationalLayer(nn.Module):
         # reshape again and sum
         x_g = x_.view(mb, d * d * d * d, self.num_layer_param)
         print('HEREERERE', x_g.size())
-        x_g = x_g.sum(1).squeeze(dim=2)  # TODO add in dim in here
+        x_g = x_g.sum(1).squeeze(dim=-1)  # TODO add in dim in here
         #print("x_g", x_g.size())
 
         """f"""
