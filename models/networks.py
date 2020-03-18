@@ -582,7 +582,7 @@ class RelationalLayer(nn.Module):
 
         # reshape again and sum
         x_g = x_.view(mb, d * d * d * d, self.num_layer_param)
-        print('HEREERERE', x_g.size())
+        #print('x_g', x_g.size())
         x_g = x_g.sum(1).squeeze(dim=-1)  # TODO add in dim in here
         #print("x_g", x_g.size())
 
@@ -807,7 +807,8 @@ class NLayerDiscriminator(nn.Module):
 class RelationalNLayerDiscriminator(nn.Module):
     """Defines a PatchGAN discriminator"""
 
-    def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.BatchNorm2d, batch_size=1, gpu_ids=[], device=None):
+    def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.BatchNorm2d, batch_size=1, gpu_ids=[], device=None,
+                 final_cnn_layer='flatten'):
         """Construct a PatchGAN discriminator
 
         Parameters:
@@ -817,8 +818,11 @@ class RelationalNLayerDiscriminator(nn.Module):
             norm_layer         -- normalization layer
             batch_size (int)   -- the input batch size
             gpu_ids (int list) -- which GPUs the network runs on: e.g., 0,1,2
+            final_cnn_layer    -- sets the downscaling type in the relational layer ('average_pool' | 'flatten')
         """
         super().__init__()
+        self.final_cnn_layer = final_cnn_layer
+
         if type(norm_layer) == functools.partial:  # no need to use bias as BatchNorm2d has affine parameters
             use_bias = norm_layer.func == nn.InstanceNorm2d
         else:
@@ -858,8 +862,7 @@ class RelationalNLayerDiscriminator(nn.Module):
         cnn_feats = self.model.forward(x)
         print('cnn size: ', cnn_feats.size(), cnn_feats.shape)
 
-        version = "pool"
-        if version == "pool":
+        if self.final_cnn_layer == "average_pool":
             # pool and squeeze the model into the [2, 256] shape
             # print(cnn_feats.shape)
             cnn_feats = F.adaptive_avg_pool2d(cnn_feats, (1, 1))  # should change shape to [batch, 512, 1, 1]
@@ -867,7 +870,7 @@ class RelationalNLayerDiscriminator(nn.Module):
             cnn_feats = cnn_feats.squeeze(dim=2)  # should change shape to [batch, 512]
             print('post-pool cnn size: ', cnn_feats.size())
 
-        elif version == "flatten":
+        elif self.final_cnn_layer == "flatten":
             # flatten the shape of the cnn features
             print("pre-flat", cnn_feats.shape)
             cnn_feats = cnn_feats.view(cnn_feats.shape[0], -1)
@@ -892,13 +895,12 @@ class RelationalNLayerDiscriminator(nn.Module):
         # Pass the image through the discriminators and concat with the image
         cnn_feats = self.model.forward(input)
 
-        version = "flatten"
-        if version == "pool":
+        if self.final_cnn_layer == "average_pool":
             # pool and squeeze the model into the [2, 256] shape
             cnn_feats = F.adaptive_avg_pool2d(cnn_feats, cnn_feats.shape[-1])
             cnn_feats = cnn_feats.squeeze()
 
-        elif version == "flatten":
+        elif self.final_cnn_layer == "flatten":
             # flatten the shape of the cnn features
             cnn_feats = cnn_feats.view(cnn_feats.shape[0], -1)
 
