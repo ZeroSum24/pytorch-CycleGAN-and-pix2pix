@@ -872,7 +872,7 @@ class RelationalNLayerDiscriminator(nn.Module):
             #print("post-flat", cnn_feats.shape)
 
         # extract the relational features from the model
-        self.relational_net = RelationalLayer(batch_size=(batch_size/len(gpu_ids)))
+        self.relational_net = RelationalLayer(batch_size=int(batch_size/len(gpu_ids)))
         self.relational_net.to(x.device)
         rl_feats = self.relational_net.forward(x)
 
