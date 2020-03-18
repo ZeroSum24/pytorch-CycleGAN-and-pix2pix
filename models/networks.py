@@ -515,14 +515,14 @@ class RelationalLayer(nn.Module):
 
         # prepare coord tensor
         def cvt_coord(i):
-            return [(i / 4 - 2) / 2., (i % 4 - 2) / 2.]
+            return [(i / 5 - 2) / 2., (i % 5 - 2) / 2.]
 
-        self.coord_tensor = torch.FloatTensor(batch_size, 16, 2)
+        self.coord_tensor = torch.FloatTensor(batch_size, 25, 2)
         if self.cuda:
             self.coord_tensor = self.coord_tensor.cuda()
         self.coord_tensor = Variable(self.coord_tensor)
         np_coord_tensor = np.zeros((batch_size, 16, 2))
-        for i in range(16):
+        for i in range(25):
             np_coord_tensor[:, i, :] = np.array(cvt_coord(i))
         self.coord_tensor.data.copy_(torch.from_numpy(np_coord_tensor))
 
@@ -875,9 +875,9 @@ class RelationalNLayerDiscriminator(nn.Module):
             #print("post-flat", cnn_feats.shape)
 
         # extract the relational features from the model
-        self.relational_net = RelationalLayer(batch_size=int(batch_size/len(gpu_ids)))
-        self.relational_net.to(x.device)
-        rl_feats = self.relational_net.forward(cnn_feats)
+        self.relational_layer = RelationalLayer(batch_size=int(batch_size / len(gpu_ids)))
+        self.relational_layer.to(x.device)
+        rl_feats = self.relational_layer.forward(cnn_feats)
 
         # concatenate the cnn and relational features
         #print('concat_sizes: ', rl_feats.size(), cnn_feats.size())
@@ -904,7 +904,7 @@ class RelationalNLayerDiscriminator(nn.Module):
             cnn_feats = cnn_feats.view(cnn_feats.shape[0], -1)
 
         # extract the relational features
-        rl_feats = self.relatiocnn_featsnal_net.forward(cnn_feats)
+        rl_feats = self.relational_layer.forward(cnn_feats)
 
         # Pass through the post-processing FC output model
         x_w_cnn = torch.cat([cnn_feats, rl_feats], 1)        # concatenate the cnn and relational features
