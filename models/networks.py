@@ -491,12 +491,13 @@ class ConvInputModel(nn.Module):
 class RelationalLayer(nn.Module):
     """ This class implements the Relational Layer."""
 
-    def __init__(self, batch_size):
+    def __init__(self, cnn_feat, batch_size):
         """Initialize the Relational Layer."""
         super(RelationalLayer, self).__init__()
 
         # (num_channels (24) +2) * 2
-        self.linear_input_size = 52
+        self.filter_size = 5
+        self.linear_input_size = 1028
         # TODO this will need to be changed since this input size is no longer correct after the conv net
         self.num_layer_param = 256
 
@@ -520,21 +521,21 @@ class RelationalLayer(nn.Module):
         self.coord_tensor = torch.FloatTensor(batch_size, 25, 2)
         if self.cuda:
             self.coord_tensor = self.coord_tensor.cuda()
+
         self.coord_tensor = Variable(self.coord_tensor)
-        np_coord_tensor = np.zeros((batch_size, 16, 2))
+        np_coord_tensor = np.zeros((batch_size, 25, 2))
         for i in range(25):
             np_coord_tensor[:, i, :] = np.array(cvt_coord(i))
         self.coord_tensor.data.copy_(torch.from_numpy(np_coord_tensor))
 
     def forward(self, cnn_feats):
 
-        #print(x.size())
 
         # average pooling to 5 x 5
-        # x = self.conv(x)  # x = (2 x 24 x 16 x 16)
-        #print(x.size())
+        #x = self.conv(x)  # x = (2 x 24 x 16 x 16)
         x = cnn_feats
-        x = F.adaptive_max_pool2d(x, (5, 5))
+        #print(x.size())
+        x = F.adaptive_max_pool2d(x, (self.filter_size, self.filter_size))
         # https://pytorch.org/docs/stable/_modules/torch/nn/modules/pooling.html#AdaptiveMaxPool2d
 
         """g"""
@@ -554,15 +555,18 @@ class RelationalLayer(nn.Module):
         # cast all pairs again48st each other
         x_i = torch.unsqueeze(x_flat, 1)  # (2 * 1 * 16 * 26)
         #print('B', x_i.size())
-        x_i = x_i.repeat(1, 16, 1, 1)  # (2 * 16 * 16 * 26)
+        x_i = x_i.repeat(1, d*d, 1, 1)  # (2 * 16 * 16 * 26)
         #print('C', x_i.size())
 
         x_j = torch.unsqueeze(x_flat, 2)  # (2 * 16 * 1 * 26)
         #print('D', x_j.size())
-        x_j = x_j.repeat(1, 1, 16, 1)  # (2 * 16 * 16 * 26)
+        x_j = x_j.repeat(1, 1, d*d, 1)  # (2 * 16 * 16 * 26)
         #print('E', x_j.size())
 
         # concatenate all together
+        #print(x_i.shape, x_j.shape)
+        x_j = x_j.permute(0, 2, 1, 3)
+        #print(x_i.shape, x_j.shape)
         x_full = torch.cat([x_i, x_j], 3)  # (2 * 16 * 16 * 52)
 
         # reshape for passing through network
@@ -860,6 +864,11 @@ class RelationalNLayerDiscriminator(nn.Module):
         cnn_feats = self.model.forward(x)
         #print('cnn size: ', cnn_feats.size(), cnn_feats.shape)
 
+        # extract the relational features from the model
+        self.relational_layer = RelationalLayer(cnn_feats, batch_size=int(batch_size / len(gpu_ids)))
+        self.relational_layer.to(x.device)
+        rl_feats = self.relational_layer.forward(cnn_feats)
+
         if self.final_cnn_layer == "average_pool":
             # pool and squeeze the model into the [2, 256] shape
             #print('pre-pool', cnn_feats.shape)
@@ -873,11 +882,6 @@ class RelationalNLayerDiscriminator(nn.Module):
             #print("pre-flat", cnn_feats.shape)
             cnn_feats = cnn_feats.view(cnn_feats.shape[0], -1)
             #print("post-flat", cnn_feats.shape)
-
-        # extract the relational features from the model
-        self.relational_layer = RelationalLayer(batch_size=int(batch_size / len(gpu_ids)))
-        self.relational_layer.to(x.device)
-        rl_feats = self.relational_layer.forward(cnn_feats)
 
         # concatenate the cnn and relational features
         #print('concat_sizes: ', rl_feats.size(), cnn_feats.size())
@@ -893,6 +897,9 @@ class RelationalNLayerDiscriminator(nn.Module):
         # Pass the image through the discriminators and concat with the image
         cnn_feats = self.model.forward(input)
 
+        # extract the relational features
+        rl_feats = self.relational_layer.forward(cnn_feats)
+
         if self.final_cnn_layer == "average_pool":
             # pool and squeeze the model into the [2, 256] shape
             cnn_feats = F.adaptive_avg_pool2d(cnn_feats, (1, 1))  # should change shape to [batch, 512, 1, 1]
@@ -902,9 +909,6 @@ class RelationalNLayerDiscriminator(nn.Module):
         elif self.final_cnn_layer == "flatten":
             # flatten the shape of the cnn features
             cnn_feats = cnn_feats.view(cnn_feats.shape[0], -1)
-
-        # extract the relational features
-        rl_feats = self.relational_layer.forward(cnn_feats)
 
         # Pass through the post-processing FC output model
         x_w_cnn = torch.cat([cnn_feats, rl_feats], 1)        # concatenate the cnn and relational features
